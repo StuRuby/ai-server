@@ -44,6 +44,16 @@ $ yarn run start:dev
 # production mode
 $ yarn run start:prod
 ```
+## Database change
+
+```bash 
+# migrate
+npx prisma migrate dev --name your_commit_message
+
+# generate
+npx prisma generate
+
+```
 
 ## Test
 
