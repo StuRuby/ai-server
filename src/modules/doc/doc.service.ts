@@ -1,10 +1,14 @@
 import { Logger, Injectable, Inject } from '@nestjs/common';
+import { z } from 'zod';
 
 import { ConfluencePagesLoader, ConfluencePagesLoaderParams } from 'langchain/document_loaders/web/confluence';
-import { OpenAI } from 'langchain/llms/openai';
 import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter';
 import { OpenAIEmbeddings } from 'langchain/embeddings/openai';
+import { ChatOpenAI } from 'langchain/chat_models/openai';
+import { RetrievalQAChain } from 'langchain/chains';
+import { PromptTemplate } from 'langchain/prompts';
 import { SupabaseVectorStore } from 'langchain/vectorstores/supabase';
+import { StructuredOutputParser } from 'langchain/output_parsers';
 
 import { SupabaseService } from '../../shared/service/supabase.service';
 
@@ -31,32 +35,66 @@ export class DocService {
 	 * @returns 
 	 */
 	async chatDoc(question: string) {
-		return await this.queryEmbeddings({
-			query: question,
-			count: 10,
-			threshold: 0.78
+		const chatModel = await this.createOpenAiChatModel();
+		const store = new SupabaseVectorStore(this.openAiEmbeddings, {
+			client: this.supabaseService.supabase,
+			tableName: 'documents',
+			queryName: 'query_match_documents'
 		});
+		const formatInstructions = this.setFormatInstructions();
+		const prompt = new PromptTemplate({
+			template: "Answer the users question as best as possible.\n{format_instructions}\n{question}",
+			inputVariables: ["question"],
+			partialVariables: {
+				format_instructions: formatInstructions
+			}
+		});
+
+		const input = await prompt.format({
+			question: question,
+		});
+
+
+
+		const chain = RetrievalQAChain.fromLLM(chatModel, store.asRetriever(), {
+			prompt,
+			returnSourceDocuments: true
+		});
+
+		const response = await chain.call({
+			query: question
+		});
+
+		return {
+			...response,
+			input
+		};
 	}
 	/**
 	 * 查询相似的向量
 	 * PostgREST不支持`pgvector`相似性运算符，所以把它封装成了一个函数，并通过rpc进行调用
 	 * @param params 
 	 */
-	async queryEmbeddings(params: { query: string; count: number; threshold: number }) {
-		const { query, count, threshold } = params;
+	async queryEmbeddings(params: { query: string; count: number }) {
+		const { query, count } = params;
 		const supabase = this.supabaseService.supabase;
 
 		// Use rpc call to query similarity
-		const queryEmbeddings = await this.openAiEmbeddings.embedQuery(query);
-		const { data, error } = await supabase.rpc('query_match_documents', {
-			query_embedding: queryEmbeddings, // Pass the embedding you want to compare
-			match_threshold: threshold, // Choose an appropriate threshold for your data
-			match_count: count
+		// const queryEmbeddings = await this.openAiEmbeddings.embedQuery(query);
+		// const { data, error } = await supabase.rpc('query_match_documents', {
+		// 	query_embedding: queryEmbeddings, // Pass the embedding you want to compare
+		// 	match_threshold: threshold, // Choose an appropriate threshold for your data
+		// 	match_count: count
+		// });
+
+		// Use SupabaseVectorStore to query similarity
+		const store = new SupabaseVectorStore(this.openAiEmbeddings, {
+			client: supabase,
+			tableName: 'documents',
+			queryName: 'query_match_documents'
 		});
 
-		if (error) {
-			throw new Error(error.message);
-		}
+		const data = await store.similaritySearch(query, count);
 		return data;
 	}
 
@@ -76,15 +114,20 @@ export class DocService {
 		return await loader.load();
 	}
 	/**
-	 * 创建OpenAI模型
+	 * 创建OpenAI Chat模型
 	 * @returns 
 	 */
-	async createOpenAiModel() {
-		const model = new OpenAI({
-			modelName: 'Jedi-AI',
-			temperature: 0.5,
-			openAIApiKey: process.env.OPENAI_API_KEY
-		});
+	async createOpenAiChatModel() {
+		const model = new ChatOpenAI(
+			{
+				modelName: 'gpt-3.5-turbo-16k',
+				temperature: 0.5,
+				openAIApiKey: process.env.OPENAI_API_KEY
+			},
+			{
+				basePath: process.env.OPENAI_PROXY_URL
+			}
+		);
 		return model;
 	}
 	/**
@@ -127,11 +170,29 @@ export class DocService {
 			insertDocs.push(insertDoc);
 		}
 
-		const {error,data  } = await supabase.from('documents').insert(insertDocs);
+		const { error, data } = await supabase.from('documents').insert(insertDocs);
 		if (error) {
 			this.logger.error('Error inserting documents:', error);
 			throw new Error(error.message);
 		}
 		return data;
+	}
+
+	/**
+	 * 设置输出格式
+	 */
+	setFormatInstructions() { 
+		const zodSchema = z.object({
+			apiName: z.string().describe('The name of the API'),
+			method: z.string().describe('The HTTP method of the API'),
+			path: z.string().describe('The path of the API'),
+			description: z.string().describe('The description of the API'),
+			request: z.unknown().describe('The structure of request params or request body for an API,the format is in JSON SCHEMA.But I\'m not sure what the final, specific real-world structure would look like. Based on your understanding and the information you can find from the documentation,complete it FULLY'),
+			response: z.unknown().describe('The structure of response data for an API,the format is in JSON SCHEMA.But I\'m not sure what the final, specific real-world structure would look like. Based on your understanding and the information you can find from the documentation,complete it FULLY')
+		});
+
+		const parser = StructuredOutputParser.fromZodSchema(zodSchema);
+		const formatInstructions = parser.getFormatInstructions();
+		return formatInstructions;
 	}
 }
