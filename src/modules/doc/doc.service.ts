@@ -56,7 +56,7 @@ export class DocService {
 
 
 
-		const chain = RetrievalQAChain.fromLLM(chatModel, store.asRetriever(), {
+		const chain = RetrievalQAChain.fromLLM(chatModel, store.asRetriever(5), {
 			prompt,
 			returnSourceDocuments: true
 		});

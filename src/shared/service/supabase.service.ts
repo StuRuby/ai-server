@@ -4,10 +4,9 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 @Injectable()
 export class SupabaseService {
+	private readonly logger: Logger = new Logger(SupabaseService.name);
 	supabase: SupabaseClient;
-	logger: Logger;
 	constructor() {
-		this.logger = new Logger(SupabaseService.name);
 		this.supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 	}
 }
