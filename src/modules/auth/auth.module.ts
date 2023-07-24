@@ -11,10 +11,10 @@ import { UserModule } from '../user/user.module';
 import { SharedModule } from '../../shared/shared.module';
 
 @Module({
-  imports: [
-    SharedModule,
-    UserModule,
-    PassportModule,
+	imports: [
+		SharedModule,
+		UserModule,
+		PassportModule
 		// JwtModule.register({
 		// 	global: true,
 		// 	secret: process.env.JWT_CONSTANTS,
@@ -22,12 +22,14 @@ import { SharedModule } from '../../shared/shared.module';
 		// })
 	],
 	controllers: [ AuthController ],
-  providers: [AuthService, SupabaseStrategy, {
-    provide: APP_GUARD,
-    useClass: SupabaseGuard,
-  }],
-	exports: [ AuthService,SupabaseStrategy ]
+	providers: [
+		AuthService,
+		SupabaseStrategy,
+		{
+			provide: APP_GUARD,
+			useClass: SupabaseGuard
+		}
+	],
+	exports: [ AuthService, SupabaseStrategy ]
 })
-export class AuthModule {
-
-}
+export class AuthModule {}

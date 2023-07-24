@@ -10,10 +10,6 @@ export class AuthService {
 	@Inject() supabaseService: SupabaseService;
   private readonly logger = new Logger(AuthService.name);
   
-  async validateUser() { 
-
-  }
-
 	async signIn(email: string, pwd: string) {
     const supabase = this.supabaseService.supabase;
     return supabase.auth.signInWithPassword({
