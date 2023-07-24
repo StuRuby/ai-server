@@ -1,5 +1,4 @@
-import { Inject, Injectable, UnauthorizedException, Logger } from '@nestjs/common';
-// import { JwtService } from '@nestjs/jwt';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 
 import { UserService } from '../user/user.service';
 import { SupabaseService } from '../../shared/service/supabase.service';

@@ -15,11 +15,6 @@ import { SharedModule } from '../../shared/shared.module';
 		SharedModule,
 		UserModule,
 		PassportModule
-		// JwtModule.register({
-		// 	global: true,
-		// 	secret: process.env.JWT_CONSTANTS,
-		// 	signOptions: { expiresIn: '60s' }
-		// })
 	],
 	controllers: [ AuthController ],
 	providers: [
