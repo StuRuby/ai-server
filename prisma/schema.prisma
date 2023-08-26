@@ -13,10 +13,10 @@ datasource db {
 }
 
 model user {
-  id        Int      @id @default(autoincrement())
+  id        Int       @id @default(autoincrement())
   email     String?   @unique
   name      String?
-  role      Role     @default(VIEWER)
+  role      Role      @default(VIEWER)
   createdAt DateTime? @default(now())
   updatedAt DateTime?
   deletedAt DateTime?
@@ -25,7 +25,7 @@ model user {
 model docrepo {
   id        Int         @id @default(autoincrement())
   name      String?
-  url       String?      @unique
+  url       String?     @unique
   createdAt DateTime    @default(now())
   updatedAt DateTime?
   deletedAt DateTime?
@@ -43,6 +43,35 @@ model documents {
   createdAt DateTime                     @default(now())
   updatedAt DateTime?
   deletedAt DateTime?
+}
+
+model standardModel {
+  id          Int                          @id @default(autoincrement())
+  name        String
+  fullName    String
+  type        String
+  isRequired  Boolean
+  description String?
+  tips        String?
+  embedding   Unsupported("vector(1536)")?
+  mappingId   Int
+  createdAt   DateTime                     @default(now())
+  updatedAt   DateTime?
+  deletedAt   DateTime?
+}
+
+model mappingModel {
+  id          Int                          @id @default(autoincrement())
+  name        String
+  fullName    String
+  type        String
+  isRequired  Boolean
+  description String?
+  tips        String?
+  embedding   Unsupported("vector(1536)")?
+  createdAt   DateTime                     @default(now())
+  updatedAt   DateTime?
+  deletedAt   DateTime?
 }
 
 enum Role {
